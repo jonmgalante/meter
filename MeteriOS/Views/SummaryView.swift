@@ -117,7 +117,7 @@ struct SummaryView: View {
                 .padding(.bottom, 16)
             }
             .healthPage()
-            .navigationTitle("Rowing")
+            .navigationTitle("Meter")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add Workout") { showingAddWorkoutSheet = true }
@@ -466,7 +466,7 @@ private struct DayWorkoutRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(workout.title.isEmpty ? "Rowing" : workout.title)
+                Text(workout.title.isEmpty ? "Workout" : workout.title)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
 
