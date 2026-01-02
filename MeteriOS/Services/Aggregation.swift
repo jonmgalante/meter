@@ -57,9 +57,10 @@ enum Aggregation {
             let avg = averagePerBucket(filled)
             let endLabelDate = calendar.date(byAdding: .day, value: 6, to: weekInterval.start)!
 
+            let total = filled.reduce(0) { $0 + $1.totalDistance }
             return SummaryStats(
-                headlineLabel: "DAILY AVERAGE",
-                headlineValue: Formatters.meters(avg),
+                headlineLabel: "TOTAL",
+                headlineValue: Formatters.meters(total),
                 subLabel: "\(Formatters.shortDate(weekInterval.start)) – \(Formatters.shortDate(endLabelDate))",
                 buckets: filled
             )
@@ -73,9 +74,10 @@ enum Aggregation {
 
             let avg = averagePerBucket(filled)
 
+            let total = filled.reduce(0) { $0 + $1.totalDistance }
             return SummaryStats(
-                headlineLabel: "DAILY AVERAGE",
-                headlineValue: Formatters.meters(avg),
+                headlineLabel: "TOTAL",
+                headlineValue: Formatters.meters(total),
                 subLabel: Formatters.monthYear(anchorDate),
                 buckets: filled
             )
@@ -92,9 +94,10 @@ enum Aggregation {
                 calendar: calendar
             )
 
+            let total = filled.reduce(0) { $0 + $1.totalDistance }
             return SummaryStats(
-                headlineLabel: "DAILY AVERAGE",
-                headlineValue: Formatters.meters(avg),
+                headlineLabel: "TOTAL",
+                headlineValue: Formatters.meters(total),
                 subLabel: Formatters.year(anchorDate),
                 buckets: filled
             )
