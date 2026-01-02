@@ -54,7 +54,6 @@ enum Aggregation {
             let buckets = makeDayBuckets(from: weekInterval.start, days: 7, calendar: calendar)
             let filled = fillBuckets(buckets: buckets, workouts: workouts)
 
-            let avg = averagePerBucket(filled)
             let endLabelDate = calendar.date(byAdding: .day, value: 6, to: weekInterval.start)!
 
             let total = filled.reduce(0) { $0 + $1.totalDistance }
@@ -72,8 +71,6 @@ enum Aggregation {
             let buckets = makeDayBuckets(from: monthInterval.start, days: days, calendar: calendar)
             let filled = fillBuckets(buckets: buckets, workouts: workouts)
 
-            let avg = averagePerBucket(filled)
-
             let total = filled.reduce(0) { $0 + $1.totalDistance }
             return SummaryStats(
                 headlineLabel: "TOTAL",
@@ -86,13 +83,6 @@ enum Aggregation {
             let yearInterval = calendar.dateInterval(of: .year, for: anchorDate)!
             let buckets = makeMonthBuckets(forYearStart: yearInterval.start, calendar: calendar)
             let filled = fillBuckets(buckets: buckets, workouts: workouts)
-
-            let avg = averagePerDayInYear(
-                filled,
-                yearStart: yearInterval.start,
-                yearEnd: yearInterval.end,
-                calendar: calendar
-            )
 
             let total = filled.reduce(0) { $0 + $1.totalDistance }
             return SummaryStats(

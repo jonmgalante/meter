@@ -117,7 +117,7 @@ struct SummaryView: View {
                 .padding(.bottom, 16)
             }
             .healthPage()
-            .navigationTitle("Meter")
+            .navigationTitle("Meters")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add Workout") { showingAddWorkoutSheet = true }
