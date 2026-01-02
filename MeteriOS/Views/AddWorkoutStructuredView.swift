@@ -33,7 +33,7 @@ struct AddWorkoutStructuredView: View {
 
                     if let total = Int(totalMetersText), total > piecesTotal {
                         HStack {
-                            Text("Extra (WU/CD)")
+                            Text("Extra")
                             Spacer()
                             Text(Formatters.meters(total - piecesTotal))
                                 .foregroundStyle(.secondary)
@@ -70,7 +70,7 @@ struct AddWorkoutStructuredView: View {
         .navigationTitle("Add Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { save() }
                     .disabled(!canSave)
             }

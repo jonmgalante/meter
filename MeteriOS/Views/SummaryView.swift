@@ -127,7 +127,7 @@ struct SummaryView: View {
                 NavigationStack {
                     AddWorkoutStructuredView()
                         .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
+                            ToolbarItem(placement: .cancellationAction) {
                                 Button("Cancel") { showingAddWorkoutSheet = false }
                             }
                         }
