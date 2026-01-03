@@ -11,7 +11,7 @@ struct SummaryView: View {
     @State private var showingAddWorkoutSheet = false
 
     // Main chart selection + drill
-    @State private var selectedBucketStart: Date? = nil
+    @State private var selectedBucketIndex: Int? = nil
     @State private var drillRoute: DrillRoute?
 
     // Day view selection + navigation
@@ -27,17 +27,21 @@ struct SummaryView: View {
         let stats = Aggregation.buildStats(workouts: workouts, range: range, anchorDate: anchorDate)
         let highlights = HighlightEngine.computeHighlights(workouts: workouts, anchorDate: anchorDate)
 
-        let hasChartData = stats.buckets.contains(where: { $0.totalDistance > 0 })
+        let bucketCount = stats.buckets.count
+        let hasChartData = bucketCount >= 2 && stats.buckets.contains(where: { $0.totalDistance > 0 })
         let header = headerDisplay(stats: stats)
 
-        // ✅ NEW: explicit x domain for better centering + label control
-        let xDates = stats.buckets.map { $0.startDate }
+        // X indices (categorical-ish numeric axis) so bars center under labels
+        let xValues: [Double] = (0..<bucketCount).map { Double($0) }
+        let xDomain: ClosedRange<Double>? = bucketCount >= 2 ? (-0.5...(Double(bucketCount) - 0.5)) : nil
 
-        // ✅ NEW: y domain headroom + better scale consistency
+        // Y axis spec (nice ticks like 1k/5k/10k)
         let maxY = stats.buckets.map(\.totalDistance).max() ?? 0
-        let yTop = max(1000, Int((Double(maxY) * 1.15).rounded(.up)))
+        let yAxis = makeYAxis(maxValue: maxY, range: range)
+        let yTop = yAxis.top
+        let yTicks = yAxis.ticks
 
-        // ✅ NEW: bar width by range (closer to Apple Health)
+        // Bar width by range (closer to Apple Health)
         let barWidth: CGFloat = {
             switch range {
             case .week:  return 18
@@ -58,7 +62,9 @@ struct SummaryView: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(.top, 8)
-                    .onChange(of: range) { _, _ in clearSelections() }
+                    .onChange(of: range) { _, _ in
+                        clearSelections()
+                    }
 
                     HealthMetricHeader(label: header.label, value: header.value, sublabel: header.sublabel)
 
@@ -69,17 +75,29 @@ struct SummaryView: View {
                     if range != .day {
                         if hasChartData {
                             HealthCard {
+                                let count = stats.buckets.count
+                                let xValues: [Double] = (0..<count).map { Double($0) }
+                                
+                                // Give extra space on both ends so bars look centered under labels,
+                                // and so the rightmost bar doesn’t collide with the trailing y-axis.
+                                let paddedDomain = (-0.8...(Double(count) - 0.2))
+                                
+                                // For year labels: show fewer labels so they don’t truncate, but ALWAYS include Dec (index 11).
+                                let yearLabelIdx: [Double] = [0, 2, 4, 6, 8, 10, 11]
+                                    .filter { $0 < count }
+                                    .map { Double($0) }
+                                
                                 Chart {
-                                    if let selectedBucketStart {
-                                        RuleMark(x: .value("Selected", selectedBucketStart))
+                                    if let selectedBucketIndex {
+                                        RuleMark(x: .value("Selected", Double(selectedBucketIndex)))
                                             .foregroundStyle(.secondary.opacity(0.25))
                                     }
-
-                                    ForEach(stats.buckets) { b in
-                                        let isSelected = (selectedBucketStart == b.startDate)
-
+                                    
+                                    ForEach(Array(stats.buckets.enumerated()), id: \.element.id) { (idx, b) in
+                                        let isSelected = (selectedBucketIndex == idx)
+                                        
                                         BarMark(
-                                            x: .value("Date", b.startDate),
+                                            x: .value("Index", Double(idx)),
                                             y: .value("Meters", b.totalDistance),
                                             width: .fixed(barWidth)
                                         )
@@ -93,56 +111,106 @@ struct SummaryView: View {
                                         )
                                     }
                                 }
-                                // ✅ centers bars + fixes label suppression issues
-                                .chartXScale(domain: xDates)
-                                // ✅ adds headroom so bars don't kiss the top
+                                .chartXScale(domain: paddedDomain)              // ✅ fixes centering + right-edge collision
                                 .chartYScale(domain: 0...yTop)
-
-                                // ✅ NEW: x-axis values forced so Saturday doesn’t disappear
+                                
                                 .chartXAxis {
                                     switch range {
                                     case .week:
-                                        AxisMarks(values: xDates) { _ in
-                                            AxisValueLabel(format: .dateTime.weekday(.narrow))
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
+                                        // ✅ Force all 7 labels (including Saturday)
+                                        AxisMarks(values: xValues) { value in
+                                            AxisValueLabel {
+                                                if let x = value.as(Double.self) {
+                                                    let i = max(0, min(count - 1, Int(x.rounded())))
+                                                    Text(stats.buckets[i].startDate, format: .dateTime.weekday(.narrow))
+                                                }
+                                            }
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
                                         }
+                                        
                                     case .month:
-                                        AxisMarks(values: .stride(by: .day, count: 7)) { _ in
-                                            AxisValueLabel(format: .dateTime.day())
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
+                                        // Show about weekly ticks for readability
+                                        let step = 7
+                                        let values = stride(from: 0, to: count, by: step).map { Double($0) }
+                                        AxisMarks(values: values) { value in
+                                            AxisValueLabel {
+                                                if let x = value.as(Double.self) {
+                                                    let i = max(0, min(count - 1, Int(x.rounded())))
+                                                    let day = Calendar.current.component(.day, from: stats.buckets[i].startDate)
+                                                    Text("\(day)")
+                                                }
+                                            }
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
                                         }
+                                        
                                     case .year:
-                                        AxisMarks(values: .stride(by: .month)) { _ in
-                                            AxisValueLabel(format: .dateTime.month(.abbreviated))
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
+                                        // ✅ Avoid truncation AND guarantee December appears
+                                        AxisMarks(values: yearLabelIdx) { value in
+                                            AxisValueLabel {
+                                                if let x = value.as(Double.self) {
+                                                    let i = max(0, min(count - 1, Int(x.rounded())))
+                                                    Text(stats.buckets[i].startDate, format: .dateTime.month(.abbreviated))
+                                                }
+                                            }
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
                                         }
+                                        
                                     case .day:
                                         AxisMarks()
                                     }
                                 }
-
-                                // ✅ NEW: y-axis like Apple Health (right-side labels + subtle grid)
+                                
                                 .chartYAxis {
-                                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { _ in
+                                    AxisMarks(position: .trailing, values: yTicks) { value in
                                         AxisGridLine().foregroundStyle(.secondary.opacity(0.12))
                                         AxisTick().foregroundStyle(.secondary.opacity(0.25))
-                                        AxisValueLabel()
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
+                                        AxisValueLabel {
+                                            if let v = value.as(Int.self) {
+                                                Text(formatYAxisTick(v))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
                                     }
                                 }
-
-                                .chartPlotStyle { $0.background(Color.clear) }
+                                
+                                .chartPlotStyle { plot in
+                                    // A tiny extra nudge so y labels don’t feel on top of the bars.
+                                    plot.padding(.trailing, 6)
+                                }
                                 .frame(height: 220)
+                                
                                 .chartOverlay { proxy in
-                                    BucketInteractionOverlay(
+                                    BucketIndexInteractionOverlay(
                                         proxy: proxy,
                                         buckets: stats.buckets,
                                         range: range,
-                                        selectedStart: $selectedBucketStart,
+                                        selectedIndex: $selectedBucketIndex,
+                                        onTapBucket: { bucket, tappedSame in
+                                            if tappedSame { drill(from: bucket) }
+                                        },
+                                        tooltipTitle: { bucket in tooltipTitle(for: range, bucket: bucket) },
+                                        tooltipValue: { bucket in Formatters.meters(bucket.totalDistance) },
+                                        tooltipSubtitle: { bucket in bucket.workoutCount > 0 ? sessionsString(bucket.workoutCount) : nil }
+                                    )
+                                }
+                    
+                                // extra breathing room so right-side labels don’t feel on top of bars
+                                .chartPlotStyle { plot in
+                                    plot
+                                        .background(Color.clear)
+                                        .padding(.trailing, 8)
+                                }
+                                .frame(height: 220)
+                                .chartOverlay { proxy in
+                                    BucketIndexInteractionOverlay(
+                                        proxy: proxy,
+                                        buckets: stats.buckets,
+                                        range: range,
+                                        selectedIndex: $selectedBucketIndex,
                                         onTapBucket: { bucket, tappedSame in
                                             if tappedSame { drill(from: bucket) }
                                         },
@@ -246,8 +314,10 @@ struct SummaryView: View {
             )
         }
 
-        if let selectedBucketStart,
-           let b = stats.buckets.first(where: { $0.startDate == selectedBucketStart }) {
+        if let selectedBucketIndex,
+           selectedBucketIndex >= 0,
+           selectedBucketIndex < stats.buckets.count {
+            let b = stats.buckets[selectedBucketIndex]
             return (
                 label: "TOTAL",
                 value: Formatters.meters(b.totalDistance),
@@ -280,6 +350,26 @@ struct SummaryView: View {
         let dayWorkouts = workouts
             .filter { $0.startDate >= start && $0.startDate < end }
             .sorted(by: { $0.startDate < $1.startDate })
+
+        // Y axis for day chart
+        let dayMaxY = dayWorkouts.map(\.totalMeters).max() ?? 0
+        let dayAxis = makeYAxis(maxValue: dayMaxY, range: .day)
+        let dayTop = dayAxis.top
+        let dayTicks = dayAxis.ticks
+
+        // Safe x domain for day chart
+        let dayXDomain: ClosedRange<Date> = {
+            if dayWorkouts.count >= 2 {
+                let minD = dayWorkouts.first!.startDate
+                let maxD = dayWorkouts.last!.startDate
+                return (minD < maxD) ? (minD...maxD) : (minD...minD.addingTimeInterval(1))
+            } else if let only = dayWorkouts.first?.startDate {
+                return only.addingTimeInterval(-3600)...only.addingTimeInterval(3600)
+            } else {
+                let now = Date()
+                return now.addingTimeInterval(-3600)...now.addingTimeInterval(3600)
+            }
+        }()
 
         return Group {
             HealthSectionHeader(title: "Workouts")
@@ -328,8 +418,22 @@ struct SummaryView: View {
                             )
                         }
                     }
+                    .chartXScale(domain: dayXDomain)
                     .chartXAxis(.hidden)
-                    .chartYAxis(.hidden)
+                    .chartYScale(domain: 0...dayTop)
+                    .chartYAxis {
+                        AxisMarks(position: .trailing, values: dayTicks) { value in
+                            AxisGridLine().foregroundStyle(.secondary.opacity(0.12))
+                            AxisTick().foregroundStyle(.secondary.opacity(0.25))
+                            AxisValueLabel {
+                                if let v = value.as(Int.self) {
+                                    Text(formatYAxisTick(v))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
                     .chartPlotStyle { $0.background(Color.clear) }
                     .frame(height: 120)
                     .chartOverlay { proxy in
@@ -383,7 +487,7 @@ struct SummaryView: View {
     }
 
     private func clearSelections() {
-        selectedBucketStart = nil
+        selectedBucketIndex = nil
         selectedWorkoutID = nil
     }
 
@@ -402,6 +506,146 @@ struct SummaryView: View {
     private func sessionsString(_ n: Int) -> String {
         "\(n) " + (n == 1 ? "session" : "sessions")
     }
+
+    // MARK: - Y Axis helpers (nice ticks + k/M formatting)
+    private struct YAxisSpec {
+        let top: Int
+        let ticks: [Int]
+    }
+
+    private func makeYAxis(maxValue: Int, range: SummaryRange) -> YAxisSpec {
+        guard maxValue > 0 else {
+            return YAxisSpec(top: 1000, ticks: [0, 500, 1000])
+        }
+
+        let desiredTickCount: Int = (range == .year) ? 5 : 4
+        let rawStep = Double(maxValue) / Double(max(1, desiredTickCount - 1))
+        let step = niceStep(rawStep)
+
+        let top = Int(ceil(Double(maxValue) / step) * step)
+        let intStep = max(1, Int(step.rounded()))
+        let ticks = stride(from: 0, through: top, by: intStep).map { $0 }
+
+        return YAxisSpec(top: top, ticks: ticks)
+    }
+
+    private func niceStep(_ x: Double) -> Double {
+        guard x > 0 else { return 1 }
+
+        let exp = floor(log10(x))
+        let f = x / pow(10, exp)
+
+        let nf: Double
+        if f <= 1 { nf = 1 }
+        else if f <= 2 { nf = 2 }
+        else if f <= 5 { nf = 5 }
+        else { nf = 10 }
+
+        return nf * pow(10, exp)
+    }
+
+    private func formatYAxisTick(_ meters: Int) -> String {
+        if meters == 0 { return "0" }
+
+        if meters >= 1_000_000 {
+            let v = Double(meters) / 1_000_000.0
+            return v >= 10 || v.rounded() == v ? "\(Int(v.rounded()))M" : String(format: "%.1fM", v)
+        }
+
+        if meters >= 1_000 {
+            let v = Double(meters) / 1_000.0
+            return v >= 10 || v.rounded() == v ? "\(Int(v.rounded()))k" : String(format: "%.1fk", v)
+        }
+
+        return "\(meters)"
+    }
+
+    // MARK: - Overlay to handle taps on index-based x-axis
+    private struct BucketIndexInteractionOverlay: View {
+        let proxy: ChartProxy
+        let buckets: [SummaryBucket]
+        let range: SummaryRange
+
+        @Binding var selectedIndex: Int?
+        let onTapBucket: (SummaryBucket, _ tappedSameAsSelected: Bool) -> Void
+        let tooltipTitle: (SummaryBucket) -> String
+        let tooltipValue: (SummaryBucket) -> String
+        let tooltipSubtitle: (SummaryBucket) -> String?
+
+        private let selectionThreshold: CGFloat = 18
+
+        var body: some View {
+            GeometryReader { geo in
+                if let plotAnchor = proxy.plotFrame {
+                    let plotFrame = geo[plotAnchor]
+                    Rectangle()
+                        .fill(Color.clear)
+                        .contentShape(Rectangle())
+                        .overlay(alignment: .topLeading) {
+                            if let selectedIndex,
+                               selectedIndex >= 0,
+                               selectedIndex < buckets.count,
+                               let xPos = proxy.position(forX: Double(selectedIndex)) {
+
+                                let bucket = buckets[selectedIndex]
+                                let pillWidth: CGFloat = 150
+                                let globalX = plotFrame.minX + xPos
+                                let clampedX = min(
+                                    max(globalX, plotFrame.minX + pillWidth / 2),
+                                    plotFrame.maxX - pillWidth / 2
+                                )
+
+                                HealthTooltipPill(
+                                    title: tooltipTitle(bucket),
+                                    value: tooltipValue(bucket),
+                                    subtitle: tooltipSubtitle(bucket)
+                                )
+                                .frame(width: pillWidth)
+                                .position(x: clampedX, y: plotFrame.minY + 14)
+                            }
+                        }
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onEnded { value in
+                                    guard plotFrame.contains(value.location) else {
+                                        selectedIndex = nil
+                                        return
+                                    }
+
+                                    let xInPlot = value.location.x - plotFrame.origin.x
+                                    guard let raw: Double = proxy.value(atX: xInPlot) else {
+                                        selectedIndex = nil
+                                        return
+                                    }
+
+                                    let i = Int(raw.rounded())
+                                    guard i >= 0, i < buckets.count else {
+                                        selectedIndex = nil
+                                        return
+                                    }
+
+                                    // Blank-space clear if tap is far from bar center
+                                    if let center = proxy.position(forX: Double(i)) {
+                                        let dist = abs(center - xInPlot)
+                                        guard dist <= selectionThreshold else {
+                                            selectedIndex = nil
+                                            return
+                                        }
+                                    }
+
+                                    let same = (selectedIndex == i)
+                                    if same { Haptics.lightImpact() } else { Haptics.selection() }
+
+                                    selectedIndex = i
+                                    onTapBucket(buckets[i], same)
+                                }
+                        )
+                } else {
+                    Color.clear
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Day workout overlay (unchanged)
@@ -417,75 +661,41 @@ private struct DayWorkoutInteractionOverlay: View {
             if let plotAnchor = proxy.plotFrame {
                 let plotFrame = geo[plotAnchor]
 
-                ZStack(alignment: .topLeading) {
-                    Rectangle()
-                        .fill(Color.clear)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 0)
-                                .onEnded { value in
-                                    guard plotFrame.contains(value.location) else {
-                                        selectedWorkoutID = nil
-                                        return
-                                    }
-
-                                    let xInPlot = value.location.x - plotFrame.origin.x
-                                    guard let nearestResult = nearestWorkoutByX(xInPlot: xInPlot) else {
-                                        selectedWorkoutID = nil
-                                        return
-                                    }
-
-                                    let nearest = nearestResult.workout
-                                    let dist = nearestResult.distance
-                                    guard dist <= selectionThreshold else {
-                                        selectedWorkoutID = nil
-                                        return
-                                    }
-
-                                    let same = (selectedWorkoutID == nearest.id)
-                                    if same { Haptics.lightImpact() } else { Haptics.selection() }
-
-                                    selectedWorkoutID = nearest.id
-                                    if same { onOpenWorkout(nearest) }
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onEnded { value in
+                                guard plotFrame.contains(value.location) else {
+                                    selectedWorkoutID = nil
+                                    return
                                 }
-                        )
 
-                    if let selectedWorkoutID,
-                       let w = workouts.first(where: { $0.id == selectedWorkoutID }),
-                       let xPos = proxy.position(forX: w.startDate) {
+                                let xInPlot = value.location.x - plotFrame.origin.x
+                                guard let tappedDate: Date = proxy.value(atX: xInPlot) else {
+                                    selectedWorkoutID = nil
+                                    return
+                                }
 
-                        let pillWidth: CGFloat = 160
-                        let globalX = plotFrame.minX + xPos
-                        let clampedX = min(
-                            max(globalX, plotFrame.minX + pillWidth / 2),
-                            plotFrame.maxX - pillWidth / 2
-                        )
+                                guard let nearest = nearestWorkout(to: tappedDate) else { return }
+                                let same = (selectedWorkoutID == nearest.id)
 
-                        HealthTooltipPill(
-                            title: Formatters.timeOnly(w.startDate),
-                            value: Formatters.meters(w.totalMeters),
-                            subtitle: w.title.isEmpty ? nil : w.title
-                        )
-                        .frame(width: pillWidth)
-                        .position(x: clampedX, y: plotFrame.minY + 14)
-                    }
-                }
+                                if same { Haptics.lightImpact() } else { Haptics.selection() }
+                                selectedWorkoutID = nearest.id
+                                if same { onOpenWorkout(nearest) }
+                            }
+                    )
             } else {
                 Color.clear
             }
         }
     }
 
-    private func nearestWorkoutByX(xInPlot: CGFloat) -> (workout: ErgWorkout, distance: CGFloat)? {
-        var best: (ErgWorkout, CGFloat)?
-        for w in workouts {
-            guard let pos = proxy.position(forX: w.startDate) else { continue }
-            let d = abs(pos - xInPlot)
-            if best == nil || d < best!.1 {
-                best = (w, d)
-            }
-        }
-        return best
+    private func nearestWorkout(to date: Date) -> ErgWorkout? {
+        workouts.min(by: {
+            abs($0.startDate.timeIntervalSince(date)) < abs($1.startDate.timeIntervalSince(date))
+        })
     }
 }
 
@@ -521,5 +731,16 @@ private struct DayWorkoutRow: View {
                 .stroke(isSelected ? HealthStyle.accent.opacity(0.28) : .clear, lineWidth: 1)
         )
         .contentShape(Rectangle())
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyIf<T>(_ condition: Bool, transform: (Self) -> T) -> some View where T: View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
     }
 }
