@@ -30,6 +30,23 @@ struct SummaryView: View {
         let hasChartData = stats.buckets.contains(where: { $0.totalDistance > 0 })
         let header = headerDisplay(stats: stats)
 
+        // ✅ NEW: explicit x domain for better centering + label control
+        let xDates = stats.buckets.map { $0.startDate }
+
+        // ✅ NEW: y domain headroom + better scale consistency
+        let maxY = stats.buckets.map(\.totalDistance).max() ?? 0
+        let yTop = max(1000, Int((Double(maxY) * 1.15).rounded(.up)))
+
+        // ✅ NEW: bar width by range (closer to Apple Health)
+        let barWidth: CGFloat = {
+            switch range {
+            case .week:  return 18
+            case .month: return 8
+            case .year:  return 12
+            case .day:   return 10
+            }
+        }()
+
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HealthStyle.sectionSpacing) {
@@ -64,7 +81,7 @@ struct SummaryView: View {
                                         BarMark(
                                             x: .value("Date", b.startDate),
                                             y: .value("Meters", b.totalDistance),
-                                            width: .fixed(6)
+                                            width: .fixed(barWidth)
                                         )
                                         .cornerRadius(3)
                                         .foregroundStyle(isSelected ? HealthStyle.accent : HealthStyle.accent.opacity(0.25))
@@ -76,8 +93,48 @@ struct SummaryView: View {
                                         )
                                     }
                                 }
-                                .chartXAxis { mainXAxis(for: range) }
-                                .chartYAxis(.hidden)
+                                // ✅ centers bars + fixes label suppression issues
+                                .chartXScale(domain: xDates)
+                                // ✅ adds headroom so bars don't kiss the top
+                                .chartYScale(domain: 0...yTop)
+
+                                // ✅ NEW: x-axis values forced so Saturday doesn’t disappear
+                                .chartXAxis {
+                                    switch range {
+                                    case .week:
+                                        AxisMarks(values: xDates) { _ in
+                                            AxisValueLabel(format: .dateTime.weekday(.narrow))
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    case .month:
+                                        AxisMarks(values: .stride(by: .day, count: 7)) { _ in
+                                            AxisValueLabel(format: .dateTime.day())
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    case .year:
+                                        AxisMarks(values: .stride(by: .month)) { _ in
+                                            AxisValueLabel(format: .dateTime.month(.abbreviated))
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    case .day:
+                                        AxisMarks()
+                                    }
+                                }
+
+                                // ✅ NEW: y-axis like Apple Health (right-side labels + subtle grid)
+                                .chartYAxis {
+                                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { _ in
+                                        AxisGridLine().foregroundStyle(.secondary.opacity(0.12))
+                                        AxisTick().foregroundStyle(.secondary.opacity(0.25))
+                                        AxisValueLabel()
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
                                 .chartPlotStyle { $0.background(Color.clear) }
                                 .frame(height: 220)
                                 .chartOverlay { proxy in
@@ -328,33 +385,6 @@ struct SummaryView: View {
     private func clearSelections() {
         selectedBucketStart = nil
         selectedWorkoutID = nil
-    }
-
-    // MARK: - Axis
-    @AxisContentBuilder
-    private func mainXAxis(for range: SummaryRange) -> some AxisContent {
-        switch range {
-        case .year:
-            AxisMarks(values: .stride(by: .month)) { _ in
-                AxisValueLabel(format: .dateTime.month(.abbreviated))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        case .month:
-            AxisMarks(values: .stride(by: .day, count: 7)) { _ in
-                AxisValueLabel(format: .dateTime.day())
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        case .week:
-            AxisMarks(values: .stride(by: .day)) { _ in
-                AxisValueLabel(format: .dateTime.weekday(.narrow))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        case .day:
-            AxisMarks()
-        }
     }
 
     // MARK: - Tooltip
