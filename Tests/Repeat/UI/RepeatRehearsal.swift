@@ -35,7 +35,7 @@ final class RepeatRehearsal: XCTestCase {
         for _ in 0..<8 {
             if element.exists && element.isHittable { return }
             let list = app.collectionViews.firstMatch
-            if towardTop { list.swipeDown() } else { list.swipeUp() }
+            if towardTop { list.swipeDown(velocity: .slow) } else { list.swipeUp(velocity: .slow) }
         }
         XCTAssertTrue(element.isHittable, String(app.debugDescription.prefix(3500)))
     }
@@ -44,9 +44,16 @@ final class RepeatRehearsal: XCTestCase {
         let source = row(title)
         scrollTo(source)
         source.tap()
-        XCTAssertTrue(app.navigationBars[title].exists)
+        let detail = app.navigationBars[title]
+        // A tap during list deceleration can stop the scroll before it opens the row.
+        if !detail.waitForExistence(timeout: 5) {
+            guard app.navigationBars["Workouts"].exists else { return XCTFail(app.debugDescription) }
+            scrollTo(source)
+            source.tap()
+            XCTAssertTrue(detail.waitForExistence(timeout: 5), app.debugDescription)
+        }
         app.buttons["Repeat Workout"].tap()
-        XCTAssertTrue(app.navigationBars["Repeat Workout"].exists)
+        XCTAssertTrue(app.navigationBars["Repeat Workout"].waitForExistence(timeout: 5))
     }
 
     private func backToLog(_ title: String) {
