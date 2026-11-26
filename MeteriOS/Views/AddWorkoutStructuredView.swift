@@ -4,151 +4,95 @@ import SwiftData
 struct AddWorkoutStructuredView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @State private var draft: WorkoutDraft
+    @State private var writer = NewWorkoutWriter()
+    @State private var saveError: String?
 
-    // Date only (no time)
-    @State private var date: Date = Date()
-
-    @State private var totalMetersText: String = ""
-    @State private var notes: String = ""
-
-    @State private var pieces: [PieceDraft] = [
-        PieceDraft(orderIndex: 0, repsText: "1", metersText: "2000", restText: "", splitText: "")
-    ]
+    init(draft: WorkoutDraft = WorkoutDraft()) {
+        _draft = State(initialValue: draft)
+    }
 
     var body: some View {
         Form {
             Section("Workout") {
-                DatePicker("Date", selection: $date, displayedComponents: [.date])
-
-                TextField("Total meters (e.g. 6000)", text: $totalMetersText)
+                DatePicker("Date", selection: $draft.date, displayedComponents: [.date])
+                TextField("Total meters (e.g. 6000)", text: $draft.totalText)
                     .keyboardType(.numberPad)
-
-                if let piecesTotal = piecesTotalMeters {
-                    HStack {
-                        Text("Pieces total")
-                        Spacer()
-                        Text(Formatters.meters(piecesTotal))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if let total = Int(totalMetersText), total > piecesTotal {
-                        HStack {
-                            Text("Extra")
-                            Spacer()
-                            Text(Formatters.meters(total - piecesTotal))
-                                .foregroundStyle(.secondary)
-                        }
+                if let work = draft.piecesTotal {
+                    LabeledContent("Pieces total", value: Formatters.meters(work))
+                    if let total = Int(draft.totalText), total > work {
+                        LabeledContent("Extra", value: Formatters.meters(total - work))
                     }
                 }
             }
 
-            Section("Pieces") {
-                ForEach($pieces) { $p in
-                    PieceDraftRow(draft: $p)
+            Section {
+                ForEach($draft.pieces) { $piece in
+                    PieceDraftRow(draft: $piece)
                 }
-                .onDelete { idxSet in
-                    pieces.remove(atOffsets: idxSet)
-                    reindex()
-                }
-
+                .onDelete { draft.pieces.remove(atOffsets: $0) }
+                .onMove { draft.pieces.move(fromOffsets: $0, toOffset: $1) }
                 Button {
-                    let next = (pieces.last?.orderIndex ?? 0) + 1
-                    pieces.append(PieceDraft(orderIndex: next, repsText: "1", metersText: "", restText: "", splitText: ""))
+                    draft.pieces.append(PieceDraft())
                 } label: {
                     Label("Add piece", systemImage: "plus")
+                }
+            } header: {
+                HStack {
+                    Text("Pieces")
+                    Spacer()
+                    if draft.previous != nil && draft.pieces.count > 1 { EditButton() }
                 }
             }
 
             Section("Notes (optional)") {
-                TextField("Anything else…", text: $notes, axis: .vertical)
+                TextField("Anything else…", text: $draft.notes, axis: .vertical)
                     .lineLimit(3...6)
+                    .accessibilityIdentifier("workout-notes")
+            }
+            if let previous = draft.previous {
+                Section("Previous results · \(Formatters.shortDate(previous.date))") {
+                    if !previous.title.isEmpty { Text(previous.title) }
+                    LabeledContent("Session total", value: Formatters.meters(previous.total))
+                    if !previous.groups.isEmpty, let extra = previous.extraMeters, extra > 0 {
+                        LabeledContent("Extra meters", value: Formatters.meters(extra))
+                    }
+                    ForEach(previous.groups.indices, id: \.self) { index in
+                        let group = previous.groups[index]
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(group.reps) × \(group.meters) m")
+                            if let split = group.split {
+                                Text("Average split \(TimeFormat.formatSplit(split)) /500 m")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
             }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .healthPage()
-        .navigationTitle("Add Workout")
+        .navigationTitle(draft.previous == nil ? "Add Workout" : "Repeat Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if draft.previous != nil {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
-                    .disabled(!canSave)
+                Button("Save") {
+                    do {
+                        if try writer.save(draft, in: context.container) { dismiss() }
+                    } catch {
+                        saveError = error.localizedDescription
+                    }
+                }
+                .disabled(draft.values == nil || writer.isSaving || writer.finished)
             }
         }
-    }
-
-    private var piecesTotalMeters: Int? {
-        let totals = pieces.compactMap { $0.totalMeters }
-        guard totals.count == pieces.count else { return nil }
-        return totals.reduce(0, +)
-    }
-
-    private var canSave: Bool {
-        Int(totalMetersText) != nil && pieces.allSatisfy { $0.isValid }
-    }
-
-    private func reindex() {
-        for i in pieces.indices {
-            pieces[i].orderIndex = i
-        }
-    }
-
-    private func save() {
-        guard let totalMeters = Int(totalMetersText) else { return }
-
-        let pieceModels: [ErgPiece] = pieces.compactMap { d in
-            guard let reps = Int(d.repsText), let meters = d.metersMeters else { return nil }
-            let rest = TimeFormat.parseRestSeconds(d.restText)
-            let split = TimeFormat.parseSplitSeconds(d.splitText)
-            return ErgPiece(
-                orderIndex: d.orderIndex,
-                reps: reps,
-                metersPerRep: meters,
-                restSeconds: rest,
-                avgSplitSecPer500: split
-            )
-        }
-        .sorted(by: { $0.orderIndex < $1.orderIndex })
-
-        let workout = ErgWorkout(
-            startDate: Calendar.current.startOfDay(for: date),
-            title: "",
-            totalMeters: totalMeters,
-            notes: notes,
-            pieces: pieceModels
-        )
-
-        context.insert(workout)
-        dismiss()
-    }
-}
-
-struct PieceDraft: Identifiable {
-    let id = UUID()
-    var orderIndex: Int
-
-    var repsText: String
-    var metersText: String
-    var restText: String
-    var splitText: String
-
-    var isValid: Bool {
-        Int(repsText) != nil && metersMeters != nil
-    }
-
-    var metersMeters: Int? {
-        let t = metersText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if t.hasSuffix("k") {
-            let num = t.dropLast()
-            if let v = Double(num) { return Int(v * 1000.0) }
-            return nil
-        }
-        return Int(t)
-    }
-
-    var totalMeters: Int? {
-        guard let reps = Int(repsText), let m = metersMeters else { return nil }
-        return max(1, reps) * m
+        .alert("Couldn’t save workout", isPresented: Binding(
+            get: { saveError != nil }, set: { if !$0 { saveError = nil } }
+        )) { Button("OK") {} } message: { Text(saveError ?? "") }
     }
 }
 

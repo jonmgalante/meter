@@ -1,7 +1,9 @@
 import SwiftUI
+import SwiftData
 
 struct WorkoutDetailView: View {
     let workout: ErgWorkout
+    @State private var repeatDraft: WorkoutDraft?
 
     var body: some View {
         ScrollView {
@@ -13,15 +15,21 @@ struct WorkoutDetailView: View {
                     sublabel: Formatters.shortDate(workout.startDate)
                 )
 
+                Button("Repeat Workout", systemImage: "repeat") {
+                    guard repeatDraft == nil else { return }
+                    repeatDraft = WorkoutDraft(repeating: RecordedWorkout(workout))
+                }
+                .buttonStyle(.bordered)
+
                 if !workout.pieces.isEmpty {
                     HealthSectionHeader(title: "Pieces")
 
                     HealthCard {
-                        let pieces = workout.pieces.sorted(by: { $0.orderIndex < $1.orderIndex })
+                        let pieces = RecordedWorkout.orderedPieces(workout)
                         VStack(spacing: 0) {
-                            ForEach(pieces) { p in
+                            ForEach(pieces, id: \.persistentModelID) { p in
                                 PieceRow(piece: p)
-                                if p.id != pieces.last?.id {
+                                if p.persistentModelID != pieces.last?.persistentModelID {
                                     Divider().opacity(0.5)
                                 }
                             }
@@ -29,7 +37,7 @@ struct WorkoutDetailView: View {
                     }
                 }
 
-                if workout.extraMeters > 0 {
+                if let extraMeters = RecordedWorkout.extraMeters(in: workout), extraMeters > 0 {
                     HealthSectionHeader(title: "Warmup / Cooldown")
 
                     HealthCard {
@@ -37,7 +45,7 @@ struct WorkoutDetailView: View {
                             Text("Extra meters")
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Text(Formatters.meters(workout.extraMeters))
+                            Text(Formatters.meters(extraMeters))
                                 .fontWeight(.semibold)
                                 .monospacedDigit()
                         }
@@ -60,6 +68,9 @@ struct WorkoutDetailView: View {
         .healthPage()
         .navigationTitle(workout.title.isEmpty ? "Rowing" : workout.title)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $repeatDraft) { draft in
+            NavigationStack { AddWorkoutStructuredView(draft: draft) }
+        }
     }
 }
 
@@ -86,7 +97,7 @@ private struct PieceRow: View {
 
             Spacer()
 
-            Text(Formatters.meters(piece.totalMeters))
+            Text(PieceDraft.workMeters(reps: piece.reps, meters: piece.metersPerRep).map { Formatters.meters($0) } ?? "—")
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .monospacedDigit()
