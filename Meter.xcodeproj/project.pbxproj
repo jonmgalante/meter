@@ -6,11 +6,32 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		BAC000000000000000000008 /* MeteriOS proxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 12565D6A2F071E5000946063 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12565D8E2F0752E500946063;
+			remoteInfo = MeteriOS;
+		};
+		C5E000000000000000000008 /* MeteriOS proxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 12565D6A2F071E5000946063 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12565D8E2F0752E500946063;
+			remoteInfo = MeteriOS;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		BAC000000000000000000002 /* MeteriOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MeteriOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5E000000000000000000002 /* MeteriOSRepeatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MeteriOSRepeatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		12565D8F2F0752E500946063 /* MeteriOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeteriOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		BAC000000000000000000003 /* MeteriOSTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = MeteriOSTests; sourceTree = "<group>"; };
+		C5E000000000000000000003 /* MeteriOSRepeatUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = "Tests/Repeat/UI"; sourceTree = "<group>"; };
 		12565D902F0752E500946063 /* MeteriOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MeteriOS;
@@ -19,6 +40,8 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		BAC000000000000000000005 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		C5E000000000000000000005 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		12565D8C2F0752E500946063 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,6 +56,8 @@
 			isa = PBXGroup;
 			children = (
 				12565D902F0752E500946063 /* MeteriOS */,
+				BAC000000000000000000003 /* MeteriOSTests */,
+				C5E000000000000000000003 /* MeteriOSRepeatUITests */,
 				12565D732F071E5000946063 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +66,8 @@
 			isa = PBXGroup;
 			children = (
 				12565D8F2F0752E500946063 /* MeteriOS.app */,
+				BAC000000000000000000002 /* MeteriOSTests.xctest */,
+				C5E000000000000000000002 /* MeteriOSRepeatUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +75,30 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		BAC000000000000000000001 /* MeteriOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BAC000000000000000000009;
+			buildPhases = (BAC000000000000000000004 /* Sources */, BAC000000000000000000005 /* Frameworks */, BAC000000000000000000006 /* Resources */);
+			buildRules = ();
+			dependencies = (BAC000000000000000000007 /* MeteriOS */);
+			fileSystemSynchronizedGroups = (BAC000000000000000000003 /* MeteriOSTests */);
+			name = MeteriOSTests;
+			productName = MeteriOSTests;
+			productReference = BAC000000000000000000002 /* MeteriOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C5E000000000000000000001 /* MeteriOSRepeatUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C5E000000000000000000009;
+			buildPhases = (C5E000000000000000000004 /* Sources */, C5E000000000000000000005 /* Frameworks */, C5E000000000000000000006 /* Resources */);
+			buildRules = ();
+			dependencies = (C5E000000000000000000007 /* MeteriOS */);
+			fileSystemSynchronizedGroups = (C5E000000000000000000003 /* MeteriOSRepeatUITests */);
+			name = MeteriOSRepeatUITests;
+			productName = MeteriOSRepeatUITests;
+			productReference = C5E000000000000000000002 /* MeteriOSRepeatUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		12565D8E2F0752E500946063 /* MeteriOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 12565D972F0752E500946063 /* Build configuration list for PBXNativeTarget "MeteriOS" */;
@@ -80,6 +131,8 @@
 				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
+					BAC000000000000000000001 = {CreatedOnToolsVersion = 26.1.1; TestTargetID = 12565D8E2F0752E500946063; };
+					C5E000000000000000000001 = {CreatedOnToolsVersion = 26.1.1; TestTargetID = 12565D8E2F0752E500946063; };
 					12565D8E2F0752E500946063 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
@@ -100,11 +153,15 @@
 			projectRoot = "";
 			targets = (
 				12565D8E2F0752E500946063 /* MeteriOS */,
+				BAC000000000000000000001 /* MeteriOSTests */,
+				C5E000000000000000000001 /* MeteriOSRepeatUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		BAC000000000000000000006 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		C5E000000000000000000006 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		12565D8D2F0752E500946063 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +172,8 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		BAC000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		C5E000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		12565D8B2F0752E500946063 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -124,7 +183,72 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BAC000000000000000000007 /* MeteriOS */ = {isa = PBXTargetDependency; target = 12565D8E2F0752E500946063 /* MeteriOS */; targetProxy = BAC000000000000000000008 /* MeteriOS proxy */; };
+		C5E000000000000000000007 /* MeteriOS */ = {isa = PBXTargetDependency; target = 12565D8E2F0752E500946063 /* MeteriOS */; targetProxy = C5E000000000000000000008 /* MeteriOS proxy */; };
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		BAC00000000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jongalante.meter.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MeteriOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MeteriOS";
+			};
+			name = Debug;
+		};
+		C5E00000000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jongalante.meter.repeatUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MeteriOS;
+			};
+			name = Debug;
+		};
+		BAC00000000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jongalante.meter.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MeteriOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MeteriOS";
+			};
+			name = Release;
+		};
+		C5E00000000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jongalante.meter.repeatUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MeteriOS;
+			};
+			name = Release;
+		};
 		12565D7B2F071E5200946063 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -313,6 +437,18 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		BAC000000000000000000009 /* Build configuration list for MeteriOSTests */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (BAC00000000000000000000A /* Debug */, BAC00000000000000000000B /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C5E000000000000000000009 /* Build configuration list for MeteriOSRepeatUITests */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (C5E00000000000000000000A /* Debug */, C5E00000000000000000000B /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		12565D6D2F071E5000946063 /* Build configuration list for PBXProject "Meter" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

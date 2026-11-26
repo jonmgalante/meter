@@ -3,23 +3,27 @@ import SwiftData
 
 @main
 struct MeteriOSApp: App {
-    let container: ModelContainer
+    private let store: Result<ModelContainer, Error>
 
     init() {
         let schema = Schema([ErgWorkout.self, ErgPiece.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        do {
-            container = try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+        store = Result {
+            try ModelContainer(for: schema, configurations: [config])
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .tint(HealthStyle.accent)
+            switch store {
+            case .success(let container):
+                RootView()
+                    .tint(HealthStyle.accent)
+                    .modelContainer(container)
+            case .failure(let error):
+                ContentUnavailableView("Workout store could not open", systemImage: "externaldrive.badge.exclamationmark",
+                                       description: Text("Your store has been retained.\n\(error.localizedDescription)"))
+            }
         }
-        .modelContainer(container)
     }
 }
